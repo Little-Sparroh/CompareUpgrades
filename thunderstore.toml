@@ -4,7 +4,7 @@ schemaVersion = "0.0.1"
 [package]
 namespace = "Sparroh"
 name = "CompareUpgrades"
-description = "Press 'C' on an upgrade to lock for compare, press 'C' again on the same upgrade to unlock."
+description = "Press a hotkey on an upgrade to lock it, then hover another upgrade to compare tooltips side-by-side."
 websiteUrl = "https://github.com/Little-Sparroh/CompareUpgrades"
 containsNsfwContent = false
 
@@ -34,5 +34,3 @@ communities = [ "mycopunk" ]
 
 [publish.categories]
 mycopunk = [ "client" ]
-
-

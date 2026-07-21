@@ -1,80 +1,47 @@
 # CompareUpgrades
 
-A BepInEx mod for MycoPunk that enables side-by-side comparison of gear upgrades with intelligent tooltip positioning.
+A BepInEx mod for Mycopunk that lets you lock one upgrade tooltip and compare it side-by-side with another.
 
-## Description
+## How to use
 
-This client-side mod enhances the upgrade selection experience in MycoPunk by allowing players to compare gear upgrades side-by-side. Simply press 'C' while viewing gear upgrades to lock an upgrade for comparison, then hover over other upgrades to see a dual tooltip display showing both the locked upgrade and the currently hovered upgrade simultaneously.
+1. Open a gear details window.
+2. Hover an upgrade and press **C** (configurable) to lock it for comparison.
+3. Hover a different upgrade — the locked upgrade's tooltip appears next to the normal one.
+4. Press **C** again (on the same upgrade, a different one, or empty space) to unlock.
+5. Closing the gear window also clears the lock.
 
-The mod uses Harmony patches to integrate seamlessly with the game's existing tooltip system, creating a companion display that intelligently positions itself to avoid overlap and screen boundaries. When comparison mode is active, you'll see both upgrades' details at once, making it easier to make informed upgrade decisions.
+## Configuration
 
-## Getting Started
+`BepInEx/config/sparroh.compareupgrades.cfg`
 
-### Dependencies
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Compare Key | C | Hotkey to lock/unlock comparison |
 
-* MycoPunk (base game)
-* [BepInEx](https://github.com/BepInEx/BepInEx) - Version 5.4.2403 or compatible
-* .NET Framework 4.8
+## Dependencies
 
-### Building/Compiling
+* Mycopunk
+* [BepInEx](https://github.com/BepInEx/BepInEx) 5.4.2403+
 
-1. Clone this repository
-2. Open the solution file in Visual Studio, Rider, or your preferred C# IDE
-3. Build the project in Release mode
+## Building
 
-Alternatively, use dotnet CLI:
 ```bash
 dotnet build --configuration Release
 ```
 
-### Installing
+Output: `bin/Release/net48/CompareUpgrades.dll`
 
-**Option 1: Via Thunderstore (Recommended)**
-1. Download and install using the Thunderstore Mod Manager
-2. Search for "CompareUpgrades" under MycoPunk community
-3. Install and enable the mod
+## Install
 
-**Option 2: Manual Installation**
-1. Ensure BepInEx is installed for MycoPunk
-2. Copy `CompareUpgrades.dll` from the build folder
-3. Place it in `<MycoPunk Game Directory>/BepInEx/plugins/`
-4. Launch the game
+Place `CompareUpgrades.dll` in `BepInEx/plugins/`, or install via Thunderstore.
 
-### Executing program
+## Notes
 
-Once the mod is loaded, comparison mode is available in gear upgrade windows:
-
-1. **Lock an upgrade for comparison:**
-   - Open a gear details window
-   - Hover over any upgrade
-   - Press the 'C' key to lock that upgrade
-
-2. **Compare with other upgrades:**
-   - With an upgrade locked, hover over any other upgrade
-   - Two tooltips will appear simultaneously - one for the locked upgrade, one for the hovered upgrade
-   - The comparison tooltip positions itself automatically to avoid overlap
-
-3. **Unlock comparison mode:**
-   - Press 'C' again on the same locked upgrade to unlock
-   - Or close/reopen the gear window to reset
-
-Only one upgrade can be locked at a time. Comparison mode only activates when hovering over a different upgrade from the locked one.
-
-## Help
-
-* **Tooltips not showing?** Make sure you're in a gear details window and have BepInEx properly installed
-* **'C' key not working?** Ensure you have focus on the gear window and are hovering over an upgrade slot
-* **Comparison tooltip in wrong position?** The mod automatically repositions based on screen space and may adjust if both tooltips would overlap
-* **Mod not loading?** Check BepInEx console for errors (requires BepInEx console enabled)
-* **Conflicts with other mods?** This mod patches HoverInfoDisplay methods. If you have other tooltip modifications, they may interfere
-* **Performance issues?** This mod only processes when in gear windows with comparison mode active
-
-## Authors
-
-* Sparroh
-* funlennysub (original mod template)
-* [@DomPizzie](https://twitter.com/dompizzie) (README template)
+* Client-side only.
+* Locks the upgrade **data**, not the list row, so sorting/scrolling won't break the lock.
+* The comparison tooltip is display-only (no scrap/favorite bindings).
+* A selection mark highlights the locked row when that row is still on screen (feedback may change later).
 
 ## License
 
-* This project is licensed under the MIT License - see the LICENSE.md file for details
+MIT

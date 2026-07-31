@@ -1,12 +1,7 @@
-using Pigeon;
-using UnityEngine;
 using UnityEngine.InputSystem;
 
-/// <summary>
-/// Display-only HoverInfo backed by a stable UpgradeInstance.
-/// Avoids locking a pooled GearUpgradeUI reference and suppresses interactive bindings
-/// so the comparison tooltip cannot steal scrap/favorite/unlock input.
-/// </summary>
+namespace CompareUpgrades;
+
 public sealed class LockedUpgradeProxy : HoverInfoUpgrade
 {
     public override bool EnableHoverInfoEvents => false;
@@ -25,7 +20,10 @@ public sealed class LockedUpgradeProxy : HoverInfoUpgrade
         return false;
     }
 
-    public override int GetAdditionalBindingCount() => 0;
+    public override int GetAdditionalBindingCount()
+    {
+        return 0;
+    }
 
     public override bool HasUnlockAction(out UnlockActionParams data)
     {

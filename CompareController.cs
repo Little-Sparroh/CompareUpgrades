@@ -1,22 +1,16 @@
 using Pigeon;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
-/// <summary>
-/// Comparison state machine:
-/// - Hotkey while unlocked + hovering an upgrade => lock that upgrade
-/// - Hotkey while locked (same, different, or empty hover) => unlock
-/// - While locked, hovering a different upgrade shows the locked tooltip beside the main one
-/// </summary>
+namespace CompareUpgrades;
+
 public static class CompareController
 {
-    private static UpgradeInstance lockedUpgrade;
-    private static SelectionMark lockMark;
-    private static GearUpgradeUI markedUi;
+    public static UpgradeInstance LockedUpgrade { get; private set; }
 
-    public static UpgradeInstance LockedUpgrade => lockedUpgrade;
-    public static bool HasLock => lockedUpgrade != null;
+    public static bool HasLock => LockedUpgrade != null;
 
     public static void Tick()
     {
@@ -27,8 +21,7 @@ public static class CompareController
             return;
         }
 
-        // Drop lock if the upgrade instance disappeared (scrapped/destroyed).
-        if (lockedUpgrade != null && lockedUpgrade.Upgrade == null)
+        if (LockedUpgrade != null && LockedUpgrade.Upgrade == null)
         {
             ClearLock();
             return;
@@ -36,7 +29,7 @@ public static class CompareController
 
         HandleHotkey();
         UpdateComparisonView();
-        UpdateLockMark();
+        CompareLockMark.Update(LockedUpgrade, GetHoveredUpgradeUi());
     }
 
     public static void OnGearWindowReset()
@@ -52,38 +45,34 @@ public static class CompareController
 
     public static void OnMainHoverRefreshed()
     {
-        // Extra-info toggle etc. — keep locked panel in sync if showing.
         if (HasLock && CompareDisplay.IsVisible)
             CompareDisplay.RefreshIfVisible();
     }
 
     private static void HandleHotkey()
     {
-        Keyboard keyboard = Keyboard.current;
+        var keyboard = Keyboard.current;
         if (keyboard == null)
             return;
 
-        Key key = CompareUpgradesPlugin.CompareKey;
+        var key = ConfigManager.CompareKey != null ? ConfigManager.CompareKey.Value : Key.C;
         if (key == Key.None)
             return;
 
-        // keyboard[key] returns a ButtonControl; avoid KeyControl type name resolution issues.
         var keyControl = keyboard[key];
         if (keyControl == null || !keyControl.wasPressedThisFrame)
             return;
 
-        // Don't steal typing from the search box.
         if (IsSearchFocused())
             return;
 
         if (HasLock)
         {
-            // Any compare press while locked unlocks (same / different / empty).
             ClearLock();
             return;
         }
 
-        GearUpgradeUI hovered = GetHoveredUpgradeUi();
+        var hovered = GetHoveredUpgradeUi();
         if (hovered != null && hovered.Upgrade != null)
             Lock(hovered.Upgrade, hovered);
     }
@@ -96,114 +85,44 @@ public static class CompareController
             return;
         }
 
-        GearUpgradeUI hovered = GetHoveredUpgradeUi();
-        bool hoveringOther = hovered != null
-            && hovered.Upgrade != null
-            && !ReferenceEquals(hovered.Upgrade, lockedUpgrade);
+        var hovered = GetHoveredUpgradeUi();
+        var hoveringOther = hovered != null
+                            && hovered.Upgrade != null
+                            && !ReferenceEquals(hovered.Upgrade, LockedUpgrade);
 
         var main = HoverInfoDisplay.Instance;
-        bool mainShowingUpgrade = main != null
-            && main.gameObject.activeSelf
-            && !CompareDisplay.IsCompareInstance(main)
-            && main.SelectedInfo != null;
+        var mainShowingUpgrade = main != null
+                                 && main.gameObject.activeSelf
+                                 && !CompareDisplay.IsCompareInstance(main)
+                                 && main.SelectedInfo != null;
 
         if (hoveringOther && mainShowingUpgrade)
         {
-            CompareDisplay.Show(lockedUpgrade);
+            CompareDisplay.Show(LockedUpgrade);
             CompareDisplay.TickPosition();
         }
         else
         {
-            // Keep the lock; only hide the companion panel.
             CompareDisplay.Hide();
         }
     }
 
     private static void Lock(UpgradeInstance upgrade, GearUpgradeUI ui)
     {
-        lockedUpgrade = upgrade;
+        LockedUpgrade = upgrade;
         CompareDisplay.EnsureCreated();
-        ApplyLockMark(ui);
+        CompareLockMark.Apply(ui);
         CompareUpgradesPlugin.Log?.LogInfo($"Locked upgrade for comparison: {GetUpgradeName(upgrade)}");
     }
 
     private static void ClearLock()
     {
-        if (lockedUpgrade != null)
+        if (LockedUpgrade != null)
             CompareUpgradesPlugin.Log?.LogInfo("Unlocked upgrade comparison.");
 
-        lockedUpgrade = null;
+        LockedUpgrade = null;
         CompareDisplay.Hide();
-        ReleaseLockMark();
-    }
-
-    private static void UpdateLockMark()
-    {
-        if (!HasLock)
-        {
-            ReleaseLockMark();
-            return;
-        }
-
-        // Re-bind the mark if the list recycled the previous UI element.
-        GearUpgradeUI ui = FindUiForLocked();
-        if (ui != markedUi)
-            ApplyLockMark(ui);
-    }
-
-    private static void ApplyLockMark(GearUpgradeUI ui)
-    {
-        ReleaseLockMark();
-        markedUi = ui;
-        if (ui == null || Menu.Instance == null)
-            return;
-
-        try
-        {
-            lockMark = Menu.Instance.GetSelectionMark();
-            lockMark.Setup((RectTransform)ui.transform, Vector2.zero, autoSize: true);
-        }
-        catch
-        {
-            lockMark = null;
-        }
-    }
-
-    private static void ReleaseLockMark()
-    {
-        if (lockMark != null)
-        {
-            try
-            {
-                lockMark.Release();
-            }
-            catch
-            {
-                // ignored
-            }
-
-            lockMark = null;
-        }
-
-        markedUi = null;
-    }
-
-    private static GearUpgradeUI FindUiForLocked()
-    {
-        if (lockedUpgrade == null)
-            return null;
-
-        // Prefer the currently hovered row if it is the locked upgrade.
-        GearUpgradeUI hovered = GetHoveredUpgradeUi();
-        if (hovered != null && ReferenceEquals(hovered.Upgrade, lockedUpgrade))
-            return hovered;
-
-        // Fall back to a raycast-free scan is not available; keep previous mark parent if still valid.
-        if (markedUi != null && markedUi && markedUi.gameObject.activeInHierarchy
-            && ReferenceEquals(markedUi.Upgrade, lockedUpgrade))
-            return markedUi;
-
-        return null;
+        CompareLockMark.Release();
     }
 
     private static GearUpgradeUI GetHoveredUpgradeUi()
@@ -228,9 +147,8 @@ public static class CompareController
 
     private static bool IsSearchFocused()
     {
-        // TMP_InputField / InputField focus — avoid compare key while typing in search.
-        var selected = UnityEngine.EventSystems.EventSystem.current != null
-            ? UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject
+        var selected = EventSystem.current != null
+            ? EventSystem.current.currentSelectedGameObject
             : null;
 
         if (selected == null)
@@ -239,13 +157,12 @@ public static class CompareController
         if (selected.GetComponent<InputField>() != null)
             return true;
 
-        // TextMeshPro input without a hard compile dependency on the component name path.
         var behaviours = selected.GetComponents<MonoBehaviour>();
-        for (int i = 0; i < behaviours.Length; i++)
+        for (var i = 0; i < behaviours.Length; i++)
         {
             if (behaviours[i] == null)
                 continue;
-            string typeName = behaviours[i].GetType().Name;
+            var typeName = behaviours[i].GetType().Name;
             if (typeName == "TMP_InputField" || typeName == "InputField")
                 return true;
         }
@@ -262,7 +179,6 @@ public static class CompareController
         }
         catch
         {
-            // ignored
         }
 
         return "(unknown)";
